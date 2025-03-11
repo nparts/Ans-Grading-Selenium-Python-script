@@ -64,7 +64,7 @@ This project automates the process of grading student assignments using Selenium
 1. **Run the script:**
 
     ```sh
-    python3 -m pytest run_grading.py
+    python3 -m pytest run_grading.py -s
     ```
 
     The script will open Chrome, navigate to the assignment URL, and start grading based on the data in the Excel file.

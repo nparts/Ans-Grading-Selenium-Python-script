@@ -1,34 +1,33 @@
-import os
-import re
-import subprocess
-import time
+from time import sleep
 import pandas as pd
 
 from selenium import webdriver
 from selenium.webdriver.common.by import By
-from selenium.webdriver.remote.file_detector import LocalFileDetector
 from selenium.webdriver.support.wait import WebDriverWait
-from selenium.webdriver.common.by import By
-from selenium.webdriver.common.action_chains import ActionChains
 from selenium.webdriver.support import expected_conditions
 from selenium.webdriver.support.wait import WebDriverWait
-from selenium.webdriver.common.keys import Keys
-from selenium.webdriver.common.desired_capabilities import DesiredCapabilities
 
 # Define assignment url (make sure you go to the url tab in the browser and copy the url)
-url="https://ans.app/assignments/1229647/results"
+url="https://ans.app/assignments/1308452/results"
 
 # Load the spreadsheet (You can export the spreadsheet as nl excel file from ANS)
-file_path = '/Users/nielsarts/Library/CloudStorage/OneDrive-WindesheimOffice365/Beoordelings formulier HW DP5 AB.xlsx'
-df = pd.read_excel(file_path)
+file_path = '/Users/nielsarts/Downloads/Beoordelings formulier - Sprint 0 - dp5.xlsx'
+df = pd.read_excel(file_path, converters={
+    "Studentnummer":str,
+    '1a':str,
+    '1b':str,
+    # '1c':str,
+    # '1d':str,
+    # '1e':str
+})
 
 # Define the mapper for values
 def map_value(value):
     mapping = {
-        -1: "[1]",     # Niet aanwezig
-        0: "[2]",   # In ontwikkeling
-        1: "[3]",   # Op niveau
-        2: "[4]"    # Boven niveau
+        '-1': "[1]",     # Niet aanwezig
+        '0': "[2]",   # In ontwikkeling
+        '1': "[3]",   # Op niveau
+        '2': "[4]"    # Boven niveau
         }
     return mapping.get(value, None)
 
@@ -75,35 +74,43 @@ def test_process_results():
     # Loop through each row from the spreadsheet
     for index, row in df.iterrows():
         student_number = row['Studentnummer']
-
+        print(f"Grading student number: {student_number}")
         # Open the assignment url
         driver.get(url)
         # Fill in the student number in the search field and click on the result
-        driver.find_element(By.ID, "search_items").click()
-        driver.find_element(By.ID, "search_items").send_keys(str(student_number))
-        WebDriverWait(driver, 30).until(expected_conditions.text_to_be_present_in_element((By.XPATH, "/html/body/div[5]/div/main/div[6]/div/table/tbody/tr/td[5]"), str(student_number)))
-        driver.find_element(By.XPATH, "/html/body/div[5]/div/main/div[6]/div/table/tbody/tr/td[2]/div/a").click()
+        search = driver.find_element(By.ID, "search_items")
+        search.click()
+        search.send_keys(student_number)
+
+        WebDriverWait(driver, 5).until(expected_conditions.text_to_be_present_in_element((By.XPATH, "/html/body/div[5]/div/main/div[5]/div/table/tbody/tr/td[5]"), str(student_number)))
+        assignment = driver.find_element(By.XPATH, "/html/body/div[5]/div/main/div[5]/div/table/tbody/tr/td[2]/div/a")
+        assignment.click()
+
+
         # Open the student assignment for grading
-        driver.implicitly_wait(1) #seconds
-        WebDriverWait(driver, 30).until(expected_conditions.element_to_be_clickable((By.CSS_SELECTOR, ".font-heading > .d-flex")))
-        driver.find_element(By.CSS_SELECTOR, ".font-heading > .d-flex").click()
-        driver.implicitly_wait(2) #seconds
+        WebDriverWait(driver, 5).until(expected_conditions.element_to_be_clickable((By.XPATH, "/html/body/div[4]/div/main/div/div[1]/div/a[2]")))
+        bekijk = driver.find_element(By.XPATH, "/html/body/div[4]/div/main/div/div[1]/div/a[2]")
+        bekijk.click()
 
         # Loop through each column and click on the value
-        for col in ['1a', '1b', '1c', '1d']:
-            driver.implicitly_wait(2)
+        for col in ['1a', '1b']:
             value = row[col]
             # Map the value and column to the correct xpath
             mapped_value = map_value(value)
             mapped_column = map_column(col)
             if mapped_value is not None and mapped_column is not None:
-                xpath = f"/html/body/main/div[1]/section/div[3]/div[1]/div[2]/div{mapped_column}/ul[1]/li{mapped_value}/div[1]/a"
+                xpath = f"/html/body/main/div[1]/section/div[3]/div/div[2]/div{mapped_column}/ul[1]/li{mapped_value}/div[1]/a"
                 # xpath = f"//body[@id='body']/main/div[1]/section/div[3]/div[1]/div[2]/div{mapped_column}/ul[2]/li{mapped_value}/div[0]/a"
                       #  //*[@id="body"]/main/div[1]/section/div[3]/div[1]/div[2]/div[1]            /ul[1]/li[4]           /div[1]/a
-                time.sleep(1)
-                driver.find_element(By.XPATH, xpath).click()
-                driver.implicitly_wait(2)
+                # /html/body/main/div[1]/section/div[3]/div/div[2]/div[1]/ul[1]/li[2]/div[1]/a
+                # /html/body/main/div[1]/section/div[3]/div/div[2]/div[1]/ul[2]/li[1]/div[1]/a
+                # /html/body/main/div[1]/section/div[3]/div/div[2]/div[1]/ul[2]/li[2]/div[1]/a
+                # /html/body/main/div[1]/section/div[3]/div/div[2]/div{mapped_column}/ul[2]/li{mapped_value}/div[1]/a
+                WebDriverWait(driver, 5).until(expected_conditions.element_to_be_clickable((By.XPATH, xpath)))
+                beoordeel = driver.find_element(By.XPATH, xpath)
+                beoordeel.click()
                 # print which student number and column is clicked
                 print(f"Student number: {student_number}, Column: {col}, Value: {value}")
-        driver.implicitly_wait(2)
+            else:
+                print(f"Invalid value or column: {value}, {col}")
     driver.quit()
