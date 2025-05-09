@@ -8,18 +8,32 @@ from selenium.webdriver.support import expected_conditions
 from selenium.webdriver.support.wait import WebDriverWait
 
 # Define assignment url (make sure you go to the url tab in the browser and copy the url)
-url="https://ans.app/assignments/1308452/results"
+# DP17
+# url="https://ans.app/assignments/1376037/results"
+# DP18
+# url="https://ans.app/assignments/1376065/results"
+# DP20
+# url="https://ans.app/assignments/1376077/results"
+# DP21
+url="https://ans.app/assignments/1376091/results"
 
 # Load the spreadsheet (You can export the spreadsheet as nl excel file from ANS)
-file_path = '/Users/nielsarts/Downloads/Beoordelings formulier - Sprint 0 - dp5.xlsx'
+file_path = '/Users/nielsarts/Desktop/Beoordelings formulier - Sprint 2.xlsx'
 df = pd.read_excel(file_path, converters={
     "Studentnummer":str,
-    '1a':str,
-    '1b':str,
-    # '1c':str,
-    # '1d':str,
-    # '1e':str
-})
+    '17a':str,
+    '17b':str,
+    '17c':str,
+    '17d':str,
+    '18a':str,
+    '18b':str,
+    '20a':str,
+    '20b':str,
+    '21a':str,
+    '21b':str,
+    '21c':str,
+    '21d':str
+}, sheet_name='CD')
 
 # Define the mapper for values
 def map_value(value):
@@ -34,14 +48,15 @@ def map_value(value):
 # Define the mapper for columns (This can be added based on the columns in the spreadsheet)
 def map_column(column):
     column_mapping = {
-        '1a': "[1]",
-        '1b': "[2]",
-        '1c': "[3]",
-        '1d': "[4]",
-        '1e': "[5]",
-        '1f': "[6]"
+        '21a': "[1]",
+        '21b': "[2]",
+        '21c': "[3]",
+        '21d': "[4]",
     }
     return column_mapping.get(column, None)
+
+# Define the student number to skip until (set to None to process all rows)
+SKIP_TILL_INCLUDING_STUDENT_NUMBER = "1210564"  # Replace with the desired student number or None
 
 def test_process_results():
     """
@@ -71,9 +86,22 @@ def test_process_results():
     options.debugger_address="localhost:9222"
     driver = webdriver.Chrome(options=options)
 
+    # Flag to determine when to start processing
+    start_processing = SKIP_TILL_INCLUDING_STUDENT_NUMBER is None
+
     # Loop through each row from the spreadsheet
     for index, row in df.iterrows():
         student_number = row['Studentnummer']
+
+        # Check if we should start processing
+        if not start_processing:
+            if student_number == SKIP_TILL_INCLUDING_STUDENT_NUMBER:
+                start_processing = True
+                continue
+            else:
+                print(f"Skipping student number: {student_number}")
+                continue
+
         print(f"Grading student number: {student_number}")
         # Open the assignment url
         driver.get(url)
@@ -82,30 +110,23 @@ def test_process_results():
         search.click()
         search.send_keys(student_number)
 
-        WebDriverWait(driver, 5).until(expected_conditions.text_to_be_present_in_element((By.XPATH, "/html/body/div[5]/div/main/div[5]/div/table/tbody/tr/td[5]"), str(student_number)))
-        assignment = driver.find_element(By.XPATH, "/html/body/div[5]/div/main/div[5]/div/table/tbody/tr/td[2]/div/a")
+        WebDriverWait(driver, 5).until(expected_conditions.text_to_be_present_in_element((By.XPATH, "/html/body/div[5]/div/main/div[4]/div/table/tbody/tr/td[5]"), str(student_number)))
+        assignment = driver.find_element(By.XPATH, "/html/body/div[5]/div/main/div[4]/div/table/tbody/tr/td[2]/div/a")
         assignment.click()
 
-
         # Open the student assignment for grading
-        WebDriverWait(driver, 5).until(expected_conditions.element_to_be_clickable((By.XPATH, "/html/body/div[4]/div/main/div/div[1]/div/a[2]")))
-        bekijk = driver.find_element(By.XPATH, "/html/body/div[4]/div/main/div/div[1]/div/a[2]")
+        WebDriverWait(driver, 5).until(expected_conditions.element_to_be_clickable((By.XPATH, "/html/body/div[4]/div/main/div/div[1]/div/div/a[2]")))
+        bekijk = driver.find_element(By.XPATH, "/html/body/div[4]/div/main/div/div[1]/div/div/a[2]")
         bekijk.click()
 
         # Loop through each column and click on the value
-        for col in ['1a', '1b']:
+        for col in ['21a','21b','21c','21d']:  # Add more columns if needed
             value = row[col]
             # Map the value and column to the correct xpath
             mapped_value = map_value(value)
             mapped_column = map_column(col)
             if mapped_value is not None and mapped_column is not None:
-                xpath = f"/html/body/main/div[1]/section/div[3]/div/div[2]/div{mapped_column}/ul[1]/li{mapped_value}/div[1]/a"
-                # xpath = f"//body[@id='body']/main/div[1]/section/div[3]/div[1]/div[2]/div{mapped_column}/ul[2]/li{mapped_value}/div[0]/a"
-                      #  //*[@id="body"]/main/div[1]/section/div[3]/div[1]/div[2]/div[1]            /ul[1]/li[4]           /div[1]/a
-                # /html/body/main/div[1]/section/div[3]/div/div[2]/div[1]/ul[1]/li[2]/div[1]/a
-                # /html/body/main/div[1]/section/div[3]/div/div[2]/div[1]/ul[2]/li[1]/div[1]/a
-                # /html/body/main/div[1]/section/div[3]/div/div[2]/div[1]/ul[2]/li[2]/div[1]/a
-                # /html/body/main/div[1]/section/div[3]/div/div[2]/div{mapped_column}/ul[2]/li{mapped_value}/div[1]/a
+                xpath = f"/html/body/main/div[1]/section/div[3]/div/div[1]/div{mapped_column}/ul[2]/li{mapped_value}/div[1]/a"
                 WebDriverWait(driver, 5).until(expected_conditions.element_to_be_clickable((By.XPATH, xpath)))
                 beoordeel = driver.find_element(By.XPATH, xpath)
                 beoordeel.click()
