@@ -8,31 +8,22 @@ from selenium.webdriver.support import expected_conditions
 from selenium.webdriver.support.wait import WebDriverWait
 
 # Define assignment url (make sure you go to the url tab in the browser and copy the url)
-# DP17
-# url="https://ans.app/assignments/1376037/results"
-# DP18
-# url="https://ans.app/assignments/1376065/results"
-# DP20
-# url="https://ans.app/assignments/1376077/results"
-# DP21
-url="https://ans.app/assignments/1376091/results"
+# DP31
+url="https://ans.app/assignments/1423365/results"
 
 # Load the spreadsheet (You can export the spreadsheet as nl excel file from ANS)
-file_path = '/Users/nielsarts/Desktop/Beoordelings formulier - Sprint 2.xlsx'
+file_path = '/Users/nielsarts/Desktop/Beoordelingsformulier.xlsx'
 df = pd.read_excel(file_path, converters={
     "Studentnummer":str,
-    '17a':str,
-    '17b':str,
-    '17c':str,
-    '17d':str,
-    '18a':str,
-    '18b':str,
-    '20a':str,
-    '20b':str,
-    '21a':str,
-    '21b':str,
-    '21c':str,
-    '21d':str
+    '14a':str,
+    '14a-opmerking':str,
+    '14b':str,
+    '14c':str,
+    '14d':str,
+    '31a':str,
+    '31a-opmerknig':str,
+    '31b':str,
+    '31c':str,
 }, sheet_name='CD')
 
 # Define the mapper for values
@@ -48,15 +39,14 @@ def map_value(value):
 # Define the mapper for columns (This can be added based on the columns in the spreadsheet)
 def map_column(column):
     column_mapping = {
-        '21a': "[1]",
-        '21b': "[2]",
-        '21c': "[3]",
-        '21d': "[4]",
+        '31a': "[1]",
+        '31b': "[2]",
+        '31c': "[3]",
     }
     return column_mapping.get(column, None)
 
 # Define the student number to skip until (set to None to process all rows)
-SKIP_TILL_INCLUDING_STUDENT_NUMBER = "1210564"  # Replace with the desired student number or None
+SKIP_TILL_INCLUDING_STUDENT_NUMBER = None # Replace with the desired student number or None
 
 def test_process_results():
     """
@@ -118,20 +108,52 @@ def test_process_results():
         WebDriverWait(driver, 5).until(expected_conditions.element_to_be_clickable((By.XPATH, "/html/body/div[4]/div/main/div/div[1]/div/div/a[2]")))
         bekijk = driver.find_element(By.XPATH, "/html/body/div[4]/div/main/div/div[1]/div/div/a[2]")
         bekijk.click()
-
+        
         # Loop through each column and click on the value
-        for col in ['21a','21b','21c','21d']:  # Add more columns if needed
+        for col in ['31a','31b', '31c']:  # Add more columns if needed
             value = row[col]
             # Map the value and column to the correct xpath
             mapped_value = map_value(value)
             mapped_column = map_column(col)
+            comment = row.get(f"{col}-opmerking", "")
+        
             if mapped_value is not None and mapped_column is not None:
+                        # /html/body/main/div[1]/section/div[3]/div/div[1]/div[1]            /ul[2]/li[3]           /div[1]/a
                 xpath = f"/html/body/main/div[1]/section/div[3]/div/div[1]/div{mapped_column}/ul[2]/li{mapped_value}/div[1]/a"
-                WebDriverWait(driver, 5).until(expected_conditions.element_to_be_clickable((By.XPATH, xpath)))
+                WebDriverWait(driver, 15).until(expected_conditions.element_to_be_clickable((By.XPATH, xpath)))
                 beoordeel = driver.find_element(By.XPATH, xpath)
                 beoordeel.click()
-                # print which student number and column is clicked
                 print(f"Student number: {student_number}, Column: {col}, Value: {value}")
+                
+                # If there is a comment and is not empty, fill it in
+                if (comment):
+                    if( not isinstance(comment, str)) or (not comment.strip()):
+                        continue
+
+                    print(f"Filling in comment for {col}: {comment}")
+                                           # /html/body/main/div[1]/section/div[3]/div/div[1]/div[1]            /ul[2]/li[3]           /div[2]/div[3]/div/a
+                    comment_button_xpath = f"/html/body/main/div[1]/section/div[3]/div/div[1]/div{mapped_column}/ul[2]/li{mapped_value}/div[2]/div[3]/div/a"
+                    WebDriverWait(driver, 5).until(expected_conditions.element_to_be_clickable((By.XPATH, comment_button_xpath)))
+                    comment_button = driver.find_element(By.XPATH, comment_button_xpath)
+                    comment_button.click()
+
+                    # /html/body/main/div[1]/section/div[3]/div/div[1]/div[1]/ul[2]/li[3]/div[2]/div[3]/div[2]/form/div[1]/div/div[2]
+                    comment_input_xpath = f"/html/body/main/div[1]/section/div[3]/div/div[1]/div{mapped_column}/ul[2]/li{mapped_value}/div[2]/div[3]/div[2]/form/div[1]/div/div[2]"
+                    # wait till input is clickable
+                    WebDriverWait(driver, 5).until(expected_conditions.element_to_be_clickable((By.XPATH, comment_input_xpath)))
+                    comment_input = driver.find_element(By.XPATH, comment_input_xpath)
+                    comment_input.click()
+                    comment_input.send_keys(comment)
+                    # wait for the keys to be sent
+                    sleep(1)
+
+                    # /html/body/main/div[1]/section/div[3]/div/div[1]/div[1]/ul[2]/li[3]/div[2]/div[3]/div[2]/form/div[2]/button[2]
+                    save_button_xpath = f"/html/body/main/div[1]/section/div[3]/div/div[1]/div{mapped_column}/ul[2]/li{mapped_value}/div[2]/div[3]/div[2]/form/div[2]/button[2]"
+                    # Wait for the save button to be clickable element is a button with type submit within a form
+                    WebDriverWait(driver, 5).until(expected_conditions.element_to_be_clickable((By.XPATH, save_button_xpath)))
+                    save_button = driver.find_element(By.XPATH, save_button_xpath)
+                    save_button.click()
+                    print(f"Comment saved for {col}: {comment}")
             else:
                 print(f"Invalid value or column: {value}, {col}")
     driver.quit()
